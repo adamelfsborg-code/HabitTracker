@@ -9,10 +9,23 @@ import SwiftUI
 
 @Observable
 class Activities {
-    var items = [ActivityItem]()
     
+    var items = [ActivityItem]() {
+        didSet {
+            if let encoded = try? JSONEncoder().encode(items) {
+                UserDefaults.standard.set(encoded, forKey: "Activities")
+            }
+        }
+    }
     
     init() {
+        if let savedItems = UserDefaults.standard.data(forKey: "Activities") {
+            if let decodedItems = try? JSONDecoder().decode([ActivityItem].self, from: savedItems) {
+                items = decodedItems
+                return
+            }
+        }
+        
         items = []
     }
     
@@ -20,7 +33,7 @@ class Activities {
 
 struct ContentView: View {
     @State private var activites = Activities()
-    @State private var path = [Int]()
+    @State private var path = NavigationPath()
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -33,14 +46,15 @@ struct ContentView: View {
             }
             .toolbar {
                 Button("New Activity", systemImage: "plus") {
-                    path = [32]
+                    path.append(32)
                 }
             }
             .navigationTitle("HabitTracker")
             .navigationDestination(for: Int.self) { _ in
                 ActivityFormView(activites: activites)
             }
-            .navigationDestination(for: ActivityItem.self) { _ in
+            .navigationDestination(for: ActivityItem.self) { selection in
+                ActivityDetailView(activity: selection, activities: activites)
             }
         }
     }
